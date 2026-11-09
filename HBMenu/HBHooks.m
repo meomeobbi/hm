@@ -28,6 +28,7 @@
 #import <UIKit/UIKit.h>
 #import <dlfcn.h>
 #import <string.h>
+#import <libkern/OSCacheControl.h>
 
 // ---------------------------------------------------------------------------
 // IL2CPP API (resolved at runtime from UnityFramework)
@@ -135,7 +136,9 @@ static void *HB_HookMethod(const Il2CppMethodInfo *mi, void *replacement) {
     void *orig = *slot;
     *slot = replacement;
     // Flush the instruction cache so the CPU sees the new pointer.
-    __builtin___clear_cache((char *)slot, (char *)slot + sizeof(void *));
+    // (sys_icache_invalidate is the supported iOS API; __builtin___clear_cache
+    // emits a call to __clear_cache, which the iOS linker cannot resolve.)
+    sys_icache_invalidate(slot, sizeof(void *));
     return orig;
 }
 

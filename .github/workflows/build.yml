@@ -1,0 +1,54 @@
+# Build the HB mod menu dylib for iOS (arm64) on a free macOS runner.
+# No Mac needed: GitHub Actions provides macOS runners with Xcode + iOS SDK.
+# Every push to main (or a manual run) builds HBMenu.dylib and publishes it
+# as a GitHub Release, so the dylib is downloadable from the Releases page.
+
+name: Build HBMenu.dylib
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version && xcrun --sdk iphoneos --show-sdk-path
+
+      - name: Compile HBMenu.dylib (arm64, iOS)
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          xcrun clang -arch arm64 \
+            -isysroot "$SDK" \
+            -miphoneos-version-min=13.0 \
+            -framework Foundation -framework UIKit -framework CoreGraphics \
+            -dynamiclib \
+            -o HBMenu.dylib \
+            HBMenu/HBMenu.m HBMenu/HBHooks.m
+          file HBMenu.dylib
+          otool -L HBMenu.dylib
+
+      - name: Upload dylib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HBMenu-dylib
+          path: HBMenu.dylib
+
+      - name: Publish dylib to Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0-${{ github.run_number }}
+          name: HBMenu v1.0 (build ${{ github.run_number }})
+          body: |
+            HB mod menu dylib for Arena of Valor (com.tumadam.aovz).
+            Inject with ESign (Tweak injection) or lcsign, then sideload.
+            Menu: two-finger tap to show/hide, or tap the floating HB button.
+          files: HBMenu.dylib
